@@ -1,0 +1,29 @@
+pluginManagement {
+    def flutterSdkPath = null
+    // Læs flutter.sdk fra local.properties
+    File localProps = new File(rootDir, "local.properties")
+    if (localProps.exists()) {
+        Properties p = new Properties()
+        localProps.withInputStream { p.load(it) }
+        flutterSdkPath = p.getProperty("flutter.sdk")
+    }
+    if (flutterSdkPath == null) {
+        throw new GradleException("flutter.sdk not set in local.properties")
+    }
+
+    // 👇 Det her er nøglen: pluginet comes-from includeBuild
+    includeBuild("${flutterSdkPath}/packages/flutter_tools/gradle")
+
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+plugins {
+    id "dev.flutter.flutter-plugin-loader" version "1.0.0"
+}
+
+include(":app")
+
