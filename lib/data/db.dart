@@ -14,35 +14,26 @@ class AppDatabase {
   static Future<Database> instance() async {
     if (_db != null) return _db!;
 
-    // --- 1️⃣ WEB BROWSER ---
-    if (kIsWeb) {
+  // --- 1️⃣ WEB BROWSER ---
+  if (kIsWeb) {
+      // Web: IndexedDB + WASM (requires files in web/ created by the setup tool)
       databaseFactory = databaseFactoryFfiWeb;
-      _db = await databaseFactory.openDatabase(_dbName,
-          options: OpenDatabaseOptions(
-            version: _dbVersion,
-            onCreate: (db, version) async => await _onCreate(db),
-            onUpgrade: (db, oldV, newV) async => await _onUpgrade(db, oldV, newV),
-          ));
-      return _db!;
-    }
-
-    // --- 2️⃣ DESKTOP (Windows/macOS/Linux) ---
-    if (!Platform.isAndroid && !Platform.isIOS) {
-      sqfliteFfiInit();
-      databaseFactory = databaseFactoryFfi;
-      final dir = await getApplicationSupportDirectory();
-      final path = p.join(dir.path, _dbName);
-      _db = await openDatabase(
-        path,
-        version: _dbVersion,
-        onCreate: _onCreate,
-        onUpgrade: _onUpgrade,
+      _db = await databaseFactory.openDatabase(
+        _dbName,
+        options: OpenDatabaseOptions(
+          version: _dbVersion,
+          onCreate: (db, v) async => _onCreate(db),
+          onUpgrade: (db, o, n) async => _onUpgrade(db, o, n),
+        ),
       );
       return _db!;
     }
 
-    // --- 3️⃣ MOBILE (Android/iOS) ---
-    final dir = await getApplicationDocumentsDirectory();
+  // --- 2️⃣ DESKTOP (Windows/macOS/Linux) ---
+  if (!Platform.isAndroid && !Platform.isIOS) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    final dir = await getApplicationSupportDirectory();
     final path = p.join(dir.path, _dbName);
     _db = await openDatabase(
       path,
@@ -52,6 +43,18 @@ class AppDatabase {
     );
     return _db!;
   }
+
+  // --- 3️⃣ MOBILE (Android/iOS) ---
+  final dir = await getApplicationDocumentsDirectory();
+  final path = p.join(dir.path, _dbName);
+  _db = await openDatabase(
+    path,
+    version: _dbVersion,
+    onCreate: _onCreate,
+    onUpgrade: _onUpgrade,
+  );
+  return _db!;
+}
 
   static Future<void> _onCreate(Database db, [int? version]) async {
     await db.execute('''
